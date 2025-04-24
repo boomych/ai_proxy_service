@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta, timezone
+from fastapi.middleware.cors import CORSMiddleware
 import asyncpg
 import secrets
 import os
@@ -85,6 +86,14 @@ async def lifespan(app: FastAPI):
     await app.state.pool.close()
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['https://ai-proxy-ui.vercel.app'], #["*"] for local debug
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
@@ -212,3 +221,8 @@ async def get_direct(username: str, from_id: int = 0, auth_user: str = Depends(v
             """, from_id, username
         )
         return [dict(row) for row in rows]
+
+
+
+
+
