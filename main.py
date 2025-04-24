@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta, timezone
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware import Middleware
 import asyncpg
 import secrets
 import os
@@ -33,6 +34,16 @@ class MessageOut(BaseModel):
     reply_to_username: Optional[str]
     message: str
     datetime: datetime
+
+middleware = [
+    Middleware(
+        CORSMiddleware,
+        allow_origins=["https://ai-proxy-ui.vercel.app"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+]
 
 # --- FastAPI with lifespan handler ---
 @asynccontextmanager
@@ -85,15 +96,7 @@ async def lifespan(app: FastAPI):
     yield
     await app.state.pool.close()
 
-app = FastAPI(lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=['https://ai-proxy-ui.vercel.app'], #["*"] for local debug
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(lifespan=lifespan, middleware=middleware)
 
 @app.get("/")
 async def root():
