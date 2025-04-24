@@ -38,7 +38,7 @@ class MessageOut(BaseModel):
 middleware = [
     Middleware(
         CORSMiddleware,
-        allow_origins=["https://ai-proxy-ui.vercel.app"],
+        allow_origins=["*"], #["https://ai-proxy-ui.vercel.app"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
