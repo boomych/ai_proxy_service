@@ -69,7 +69,6 @@ async def lifespan(app: FastAPI):
                 codeword = entry["codeword"]
                 is_human = entry.get("is_human", True)
 
-                # если пользователь есть — проверим кодовое слово и обновим
                 existing = await conn.fetchrow("SELECT codeword FROM users WHERE username=$1", username)
                 if existing:
                     if existing["codeword"] != codeword:
@@ -86,6 +85,14 @@ async def lifespan(app: FastAPI):
     await app.state.pool.close()
 
 app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
+async def root():
+    return {"status": "ok"}
+
+@app.get("/ping")
+async def ping():
+    return {"pong": True, "time": datetime.now(timezone.utc).isoformat()}
 
 # --- Auth Dependency ---
 async def verify_token(authorization: Optional[str] = Header(None)) -> str:
