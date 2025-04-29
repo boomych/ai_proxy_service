@@ -160,15 +160,14 @@ async def send_direct(to_user: str, msg: MessageIn, from_user: str = Depends(ver
 # --- Receive messages ---
 @app.get("/messages", response_model=List[MessageOut])
 async def get_all_messages(
-    from_id: int = 0,
     from_user: Optional[str] = None,
     to_user: Optional[str] = None,
     limit: int = 100,
     auth_user: str = Depends(verify_token)
 ):
-    conditions = ["m.message_id > $1"]
-    params = [from_id]
-    i = 2
+    conditions = []
+    params = []
+    i = 1
     if from_user:
         conditions.append(f"m.from_username = ${i}")
         params.append(from_user)
@@ -178,35 +177,22 @@ async def get_all_messages(
         params.append(to_user)
         i += 1
     conditions_str = " AND ".join(conditions)
+
     query = f"""
         SELECT m.message_id, m.reply_to_message_id, m.from_username, u.is_human AS from_is_human,
                m.reply_to_username, m.message, m.datetime
         FROM messages m
         JOIN users u ON u.username = m.from_username
-        WHERE {conditions_str}
-        ORDER BY m.message_id ASC
+        {f"WHERE {conditions_str}" if conditions else ""}
+        ORDER BY m.datetime DESC
         LIMIT ${i}
     """
     params.append(limit)
 
     async with app.state.pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-        return [dict(row) for row in rows]
+        return [dict(row) for row in rows][::-1]  # Переворачиваем, чтобы старые сверху
 
-@app.get("/participants", response_model=List[MessageOut])
-async def get_broadcast(from_id: int = 0, username: str = Depends(verify_token)):
-    async with app.state.pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT m.message_id, m.reply_to_message_id, m.from_username, u.is_human AS from_is_human,
-                   m.reply_to_username, m.message, m.datetime
-            FROM messages m
-            JOIN users u ON u.username = m.from_username
-            WHERE m.message_id > $1 AND (m.reply_to_username IS NULL OR m.reply_to_username = '')
-            ORDER BY m.message_id ASC
-            """, from_id
-        )
-        return [dict(row) for row in rows]
 
 @app.get("/participants/{username}", response_model=List[MessageOut])
 async def get_direct(username: str, from_id: int = 0, auth_user: str = Depends(verify_token)):
